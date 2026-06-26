@@ -24,5 +24,8 @@
   "type": "module",
   "devDependencies": {
     "@types/node": "^26.0.1"
+  },
+  "bin": {
+    "cag-server": "./dist/index.js"
   }
 }

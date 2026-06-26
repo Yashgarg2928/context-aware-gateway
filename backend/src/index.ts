@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -29,13 +30,9 @@ function loadConfig(targetDir: string) {
   return yaml.parse(fileContent);
 }
 
-// Basic Regex-based AST minifier to strip function bodies
 function minifyCode(code: string): string {
   let minified = code;
-  // Remove multi-line comments
   minified = minified.replace(/\/\*[\s\S]*?\*\//g, '');
-  // Simple heuristic: keep signatures, replace `{ ... }` blocks roughly
-  // This is a naive fallback for AST stripping
   minified = minified.replace(/\{[^\{\}]*\}/g, '{ /* body minified */ }');
   return minified;
 }
