@@ -2,66 +2,51 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A headless, ultra-fast Model Context Protocol (MCP) server that injects massive, project-specific context blocks into AI coding agents using native slash commands.
+A universal, headless context manager for AI coding agents and web-based LLMs. Manage your project rules and massive file contexts centrally, and instantly inject them into Cursor, Claude Code, or Google AI Studio.
 
 ## The Problem
-Feeding an entire codebase to AI coding agents causes "context pollution" and token limit errors. Copy-pasting specific files and rules manually every time you start a new chat is incredibly tedious. 
+Feeding an entire codebase to AI coding agents causes "context pollution". Copy-pasting specific files and rules manually every time you start a new chat is tedious.
 
 ## The Solution
-CAG solves this by allowing you to define a simple `.cag-config.yaml` file in the root of your project. You map specific categories (like "frontend", "database", or "auth") to specific files and global rules. 
+CAG acts as a centralized database (`~/.cag.json`) with three powerful modes:
+1. **The Web UI:** A zero-dependency local dashboard to manage all your "Projects" centrally.
+2. **The MCP Server:** Native integration for Cursor and Claude.
+3. **The Universal Injector:** A terminal command you can bind to a hotkey that instantly minifies context, copies it, and pastes it into any web browser text box.
 
-Because CAG acts as a local **Model Context Protocol (MCP) Server**, you simply type `/cag frontend` in your IDE (Cursor, Claude Code, etc.), and the daemon instantly parses your YAML, minifies the code, and injects the perfect context natively.
-
-## Features
-- **Native IDE Integration:** Seamlessly works with any MCP-compatible client. No hacky clipboard management.
-- **Ultra-Lightweight & Headless:** Zero UI overhead. Configuration is strictly driven by version-controllable YAML files that travel with your project.
-- **Token-Saving Minification:** Automatically strips function bodies and huge code blocks from target files, injecting only class signatures and docstrings to save precious LLM tokens.
-- **AI "Skills" Enabled:** Comes with an AI Skill (`SKILL.md`) that teaches autonomous coding agents how to read and modify the `.cag-config.yaml` file themselves. Just ask your agent to "add this rule to the config!"
+## Project Types
+CAG supports two types of projects:
+- **Local Codebase:** Point CAG to a folder on your Mac. It reads a `.cag-config.yaml` inside that folder, allowing your autonomous AI agents to edit the rules natively.
+- **Cloud / Web App:** For web tools where you have no local folder. You define your rules and snippets directly in the CAG Central dashboard.
 
 ## Installation
-
-Ensure you have [Node.js](https://nodejs.org/) installed, then clone the repository and build the daemon:
 
 ```bash
 git clone https://github.com/yourusername/context-aware-gateway.git
 cd context-aware-gateway/backend
 npm install
 npm run build
-```
-
-## IDE Configuration
-
-### For Cursor
-Add the local MCP server to your Cursor settings by providing the path to the compiled daemon:
-`node /path/to/context-aware-gateway/backend/dist/index.js`
-
-### For Claude Code
-```bash
-claude mcp add cag node /path/to/context-aware-gateway/backend/dist/index.js
+npm install -g .
 ```
 
 ## Usage
 
-1. Create a `.cag-config.yaml` file in the root of your working project:
-
-```yaml
-version: 1
-project_name: "My App"
-categories:
-  - name: "database"
-    rules:
-      - "Always use snake_case for column names."
-    context:
-      - path: "src/db/schema.prisma"
-        minify: false
-      - path: "src/db/queries.ts"
-        minify: true
+### 1. Central Management
+Open the UI from anywhere:
+```bash
+cag ui
 ```
+*This opens your browser to `http://localhost:3030`. Add a project here first!*
 
-2. Open your AI agent chat and type: `/cag database`. The agent will instantly fetch the rules and minified files!
+### 2. For IDEs (Cursor, Claude Code, etc.)
+Configure your IDE's MCP Server to run:
+```bash
+cag mcp
+```
+Then simply type `/cag <project-id> <category>` in your agent chat to natively fetch your rules and minified files.
 
-## Contributing
-Contributions are welcome! Please open an issue or submit a Pull Request.
-
-## License
-MIT License
+### 3. For Web Browsers (Universal Injector)
+If you are using ChatGPT or Google AI Studio, run this command (or bind it to an Alfred/Raycast hotkey):
+```bash
+cag inject <project-id> <category>
+```
+*CAG will grab the context, copy it to your clipboard, and automatically press `Cmd+V` to paste it into your active text box!*
