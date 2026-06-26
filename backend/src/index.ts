@@ -46,9 +46,14 @@ const gen = (projId: string, catName: string) => {
 const mode = process.argv[2];
 
 if (mode === "inject") {
-  execSync("pbcopy", { input: gen(process.argv[3], process.argv[4]) });
-  execSync(`osascript -e 'tell application "System Events" to keystroke "v" using command down'`);
-  process.exit(0);
+  try {
+    execSync("pbcopy", { input: gen(process.argv[3], process.argv[4]) });
+    execSync(`osascript -e 'tell application "System Events" to keystroke "v" using command down'`);
+    process.exit(0);
+  } catch (err: any) {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  }
 }
 
 if (mode === "ui") {
