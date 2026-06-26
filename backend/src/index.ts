@@ -96,7 +96,7 @@ if (mode === "ui") {
   });
 }
 
-if (!mode || mode === "mcp") {
+if (mode === "mcp") {
   const srv = new Server({ name: "cag", version: "2" }, { capabilities: { tools: {} } });
   srv.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: [{
@@ -112,4 +112,7 @@ if (!mode || mode === "mcp") {
     } catch (e: any) { return { content: [{ type: "text", text: e.message }], isError: true }; }
   });
   srv.connect(new StdioServerTransport()).catch(console.error);
+} else if (mode !== "ui" && mode !== "inject") {
+  console.log(`CAG - Context-Aware Gateway\n\nUsage:\n  cag ui                          - Open the dashboard\n  cag mcp                         - Start MCP server (for IDEs)\n  cag inject <project> <category> - Paste context anywhere\n`);
+  process.exit(0);
 }
