@@ -38,10 +38,19 @@ cag ui
 *This opens your browser to `http://localhost:3030`. Add a project here first!*
 
 ### 2. For IDEs (Cursor, Claude Code, etc.)
-Configure your IDE's MCP Server to run:
+You only need to configure this once. The IDE will automatically run it in the background.
+
+**Cursor:**
+1. Go to Settings -> Features -> MCP Servers
+2. Click **+ Add New MCP Server**
+3. Name: `CAG` | Type: `command` | Command: `cag mcp`
+
+**Claude Code (CLI):**
+Run this in your terminal:
 ```bash
-cag mcp
+claude mcp add cag "cag mcp"
 ```
+
 Then simply type `/cag <project-id> <category>` in your agent chat to natively fetch your rules and minified files.
 
 ### 3. For Web Browsers (Universal Injector)
