@@ -2,7 +2,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { readFileSync, existsSync, writeFileSync } from "fs";
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { parse } from "yaml";
@@ -44,6 +44,57 @@ const gen = (projId: string, catName: string) => {
 };
 
 const mode = process.argv[2];
+
+if (mode === "init") {
+  console.log("Initializing Context-Aware Gateway (CAG)...");
+  
+  const localConfig = join(process.cwd(), ".cag-config.yaml");
+  if (!existsSync(localConfig)) {
+    writeFileSync(localConfig, `version: 1\ncategories:\n  - name: "default"\n    rules: ["Be concise"]\n    context: []\n`);
+    console.log("✓ Created .cag-config.yaml in current directory");
+  }
+
+  const agySkillDir = join(homedir(), ".gemini/config/skills/cag");
+  if (!existsSync(agySkillDir)) mkdirSync(agySkillDir, { recursive: true });
+  writeFileSync(join(agySkillDir, "SKILL.md"), `---
+name: cag
+description: Manages Context-Aware Gateway (CAG) profiles. Use when the user asks to update context rules, files, or categories.
+---
+# Context-Aware Gateway (CAG)
+When user types \`/cag <project-id> <category>\`, MCP server fetches context.
+If asked to edit context, edit \`.cag-config.yaml\` in the project root. If missing, create it.
+`);
+  console.log("✓ Installed AI Skill for Antigravity");
+
+  const agyMcpFile = join(homedir(), ".gemini/config/mcp.json");
+  let agyMcp: any = { mcpServers: {} };
+  if (existsSync(agyMcpFile)) {
+    try { agyMcp = JSON.parse(readFileSync(agyMcpFile, "utf8")); } catch(e){}
+  }
+  if (!agyMcp.mcpServers) agyMcp.mcpServers = {};
+  agyMcp.mcpServers["cag"] = { command: "cag", args: ["mcp"] };
+  writeFileSync(agyMcpFile, JSON.stringify(agyMcp, null, 2));
+  console.log("✓ Configured MCP Server for Antigravity");
+
+  const claudeFile = join(homedir(), "Library/Application Support/Claude/claude_desktop_config.json");
+  if (existsSync(claudeFile)) {
+    try {
+      let claude = JSON.parse(readFileSync(claudeFile, "utf8"));
+      if (!claude.mcpServers) claude.mcpServers = {};
+      claude.mcpServers["cag"] = { command: "cag", args: ["mcp"] };
+      writeFileSync(claudeFile, JSON.stringify(claude, null, 2));
+      console.log("✓ Configured MCP Server for Claude Desktop");
+    } catch(e){}
+  }
+
+  try {
+    execSync(`claude mcp add cag "cag mcp"`, { stdio: "ignore" });
+    console.log("✓ Configured MCP Server for Claude Code");
+  } catch(e) {}
+
+  console.log("\nSetup complete! You can now use /cag in your agent.");
+  process.exit(0);
+}
 
 if (mode === "inject") {
   try {
@@ -112,7 +163,7 @@ if (mode === "mcp") {
     } catch (e: any) { return { content: [{ type: "text", text: e.message }], isError: true }; }
   });
   srv.connect(new StdioServerTransport()).catch(console.error);
-} else if (mode !== "ui" && mode !== "inject") {
-  console.log(`CAG - Context-Aware Gateway\n\nUsage:\n  cag ui                          - Open the dashboard\n  cag mcp                         - Start MCP server (for IDEs)\n  cag inject <project> <category> - Paste context anywhere\n`);
+} else if (mode !== "ui" && mode !== "inject" && mode !== "init") {
+  console.log(`CAG - Context-Aware Gateway\n\nUsage:\n  cag init                        - Auto-install skills & MCP configs\n  cag ui                          - Open the dashboard\n  cag mcp                         - Start MCP server (for IDEs)\n  cag inject <project> <category> - Paste context anywhere\n`);
   process.exit(0);
 }
