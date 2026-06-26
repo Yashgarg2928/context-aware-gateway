@@ -1,145 +1,56 @@
 #!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import * as fs from "fs";
-import * as path from "path";
-import * as yaml from "yaml";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
+import { parse } from "yaml";
 import { execSync } from "child_process";
 
-// Helper: Load config
-function loadConfig(targetDir: string) {
-  const configPath = path.join(targetDir, ".cag-config.yaml");
-  if (!fs.existsSync(configPath)) {
-    throw new Error(`Configuration file not found at ${configPath}`);
-  }
-  const fileContent = fs.readFileSync(configPath, "utf8");
-  return yaml.parse(fileContent);
+const gen = (catName: string, dir: string) => {
+  if (!existsSync(join(dir, ".cag-config.yaml"))) throw new Error("No .cag-config.yaml");
+  const cat = parse(readFileSync(join(dir, ".cag-config.yaml"), "utf8")).categories?.find((c: any) => c.name === catName);
+  if (!cat) throw new Error(`Category '${catName}' missing`);
+
+  const rules = cat.rules?.map((r: string) => `- ${r}`).join("\n") || "";
+  const files = cat.context?.map((c: any) => {
+    const p = join(dir, c.path);
+    if (!existsSync(p)) return `### ${c.path}\nNot found.\n`;
+    let body = readFileSync(p, "utf8");
+    if (c.minify) body = body.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{[^\{\}]*\}/g, "{ /* minified */ }");
+    return `### ${c.path}\n\`\`\`\n${body}\n\`\`\`\n`;
+  }).join("\n") || "";
+
+  return `# CAG: ${catName}\n\n${rules}\n${files}`;
+};
+
+if (process.argv[2] === "inject") {
+  execSync("pbcopy", { input: gen(process.argv[3], process.cwd()) });
+  execSync(`osascript -e 'tell application "System Events" to keystroke "v" using command down'`);
+  process.exit(0);
 }
 
-// Helper: AST Regex Minifier
-function minifyCode(code: string): string {
-  let minified = code;
-  minified = minified.replace(/\/\*[\s\S]*?\*\//g, '');
-  minified = minified.replace(/\{[^\{\}]*\}/g, '{ /* body minified */ }');
-  return minified;
-}
+const srv = new Server({ name: "cag", version: "1" }, { capabilities: { tools: {} } });
+srv.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [{
+    name: "get_category_context",
+    description: "Fetch context for /cag <category>",
+    inputSchema: {
+      type: "object",
+      properties: { categoryName: { type: "string" }, projectPath: { type: "string" } },
+      required: ["categoryName", "projectPath"],
+    },
+  }],
+}));
 
-// Helper: Generate the markdown payload
-function generatePayload(categoryName: string, projectPath: string): string {
-  const config = loadConfig(projectPath);
-  const category = config.categories?.find((c: any) => c.name === categoryName);
-
-  if (!category) {
-    throw new Error(`Category '${categoryName}' not found in .cag-config.yaml`);
-  }
-
-  let responseText = `# CAG Context: ${categoryName}\n\n`;
-
-  if (category.rules?.length > 0) {
-    responseText += `## Rules\n`;
-    category.rules.forEach((rule: string) => {
-      responseText += `- ${rule}\n`;
-    });
-    responseText += `\n`;
-  }
-
-  if (category.context?.length > 0) {
-    responseText += `## Files\n`;
-    category.context.forEach((ctx: any) => {
-      const filePath = path.join(projectPath, ctx.path);
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, "utf8");
-        const finalContent = ctx.minify ? minifyCode(content) : content;
-        responseText += `### ${ctx.path}\n\`\`\`\n${finalContent}\n\`\`\`\n\n`;
-      } else {
-        responseText += `### ${ctx.path}\nFile not found.\n\n`;
-      }
-    });
-  }
-
-  return responseText;
-}
-
-// ==========================================
-// MODE 1: Universal Hotkey / Clipboard Injection
-// ==========================================
-if (process.argv.length > 2 && process.argv[2] === "inject") {
-  const categoryName = process.argv[3];
-  if (!categoryName) {
-    console.error("Usage: cag-server inject <category_name>");
-    process.exit(1);
-  }
-
+srv.setRequestHandler(CallToolRequestSchema, async (req) => {
+  if (req.params.name !== "get_category_context") throw new Error("Not found");
   try {
-    const payload = generatePayload(categoryName, process.cwd());
-    
-    // Copy to clipboard (macOS specific for now)
-    execSync("pbcopy", { input: payload });
-    
-    // Simulate Cmd+V (Paste) using AppleScript
-    execSync(`osascript -e 'tell application "System Events" to keystroke "v" using command down'`);
-    
-    console.log(`Successfully injected context for '${categoryName}'`);
-    process.exit(0);
-  } catch (err: any) {
-    console.error(`Injection failed: ${err.message}`);
-    process.exit(1);
+    const args = req.params.arguments as any;
+    return { content: [{ type: "text", text: gen(args.categoryName, args.projectPath) }] };
+  } catch (e: any) {
+    return { content: [{ type: "text", text: e.message }], isError: true };
   }
-}
-
-// ==========================================
-// MODE 2: MCP Server (For Cursor/Claude/IDE)
-// ==========================================
-const server = new Server(
-  { name: "cag-mcp-server", version: "1.0.1" },
-  { capabilities: { tools: {} } }
-);
-
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "get_category_context",
-        description: "Fetches context for CAG category. Use when user types /cag <category>",
-        inputSchema: {
-          type: "object",
-          properties: {
-            categoryName: { type: "string" },
-            projectPath: { type: "string" },
-          },
-          required: ["categoryName", "projectPath"],
-        },
-      },
-    ],
-  };
 });
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  if (request.params.name === "get_category_context") {
-    const categoryName = request.params.arguments?.categoryName as string;
-    const projectPath = request.params.arguments?.projectPath as string;
-
-    try {
-      const payload = generatePayload(categoryName, projectPath);
-      return { content: [{ type: "text", text: payload }] };
-    } catch (error: any) {
-      return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
-    }
-  }
-  throw new Error(`Tool not found: ${request.params.name}`);
-});
-
-async function runMCPServer() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("CAG MCP Server running on stdio");
-}
-
-runMCPServer().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+srv.connect(new StdioServerTransport()).catch(console.error);
