@@ -1,36 +1,23 @@
 ---
-name: CAG Manager
-description: Enables the agent to read, manage, and update the Context-Aware Gateway (.cag-config.yaml) configuration file for the user's project.
+name: cag
+description: Manages Context-Aware Gateway (CAG) profiles. Use when the user asks to update context rules, files, or categories for their project.
 ---
 
-# Context-Aware Gateway (CAG) Manager
+# Context-Aware Gateway (CAG) Skill
 
-The user's project utilizes the **Context-Aware Gateway (CAG)** to manage rules and target files for specific contextual categories. 
-As an AI Agent, you have the ability to read and update these configuration files to help the user maintain a robust contextual environment.
+When the user types `/cag <project-id> <category>`, the MCP server fetches context for that category.
 
-## 1. What is CAG?
-CAG uses a local configuration file named `.cag-config.yaml` located at the root of the user's project workspace. 
-When the user types a slash command like `/cag frontend`, the CAG MCP server reads this file and injects the specified rules and file contexts into your prompt.
-
-## 2. Configuration Schema
-The `.cag-config.yaml` file follows this exact schema:
+If the user asks you to ADD or EDIT a rule/file in their CAG context:
+1. Assume the project is local. Read `.cag-config.yaml` in their project root.
+2. If it doesn't exist, create it with this schema:
 ```yaml
 version: 1
-project_name: "Project Name"
 categories:
-  - name: "category_name" # e.g. frontend, database, backend
-    rules:
-      - "A list of strings representing coding rules for this category."
+  - name: "frontend"
+    rules: ["Always use React Hooks"]
     context:
-      - path: "relative/path/to/file/or/folder"
-        minify: true # If true, tree-sitter strips function bodies to save tokens
+      - path: "src/App.tsx"
+        minify: true
 ```
-
-## 3. Your Responsibilities
-If the user asks you to "add a rule to the frontend category", "create a new CAG category", or "add this file to the context":
-1. **Locate the config:** Check if `.cag-config.yaml` exists in the root of the workspace. If it does not, create it using the schema above.
-2. **Update the config:** Use your file editing tools to safely append the rule or the file path to the correct category in the YAML file.
-3. **Notify the User:** Once you have updated the file, explicitly tell the user: *"I have updated the `.cag-config.yaml`. Next time you need this context, simply run `/cag <category_name>`."*
-
-## 4. Proactive Recommendation
-If you notice the user repeating instructions or providing you with a list of rules manually across multiple turns, proactively suggest adding those rules to the `.cag-config.yaml` file so they become permanent.
+3. Edit `.cag-config.yaml` to add the requested rules or file paths.
+4. If the user is editing a "Cloud" project stored in `~/.cag.json`, politely decline and tell them to run `cag ui` to edit it visually in the dashboard.
