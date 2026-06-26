@@ -67,6 +67,19 @@ Add this to your `claude_desktop_config.json`:
 **Cline / RooCode (VS Code):**
 Open the MCP Servers tab in the extension, click `+`, and set the command to `cag mcp`.
 
+**Antigravity (AGY) & OpenCode:**
+Add this to your `~/.gemini/config/mcp.json` (for AGY) or `~/.opencode/mcp.json` (for OpenCode):
+```json
+{
+  "mcpServers": {
+    "cag": {
+      "command": "cag",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
 Then simply type `/cag <project-id> <category>` in your agent chat to natively fetch your rules and minified files.
 
 ### 3. For Web Browsers (Universal Injector)
