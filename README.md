@@ -51,6 +51,22 @@ Run this in your terminal:
 claude mcp add cag "cag mcp"
 ```
 
+**Claude Desktop App:**
+Add this to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "cag": {
+      "command": "cag",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+**Cline / RooCode (VS Code):**
+Open the MCP Servers tab in the extension, click `+`, and set the command to `cag mcp`.
+
 Then simply type `/cag <project-id> <category>` in your agent chat to natively fetch your rules and minified files.
 
 ### 3. For Web Browsers (Universal Injector)
